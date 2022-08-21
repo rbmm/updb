@@ -67,7 +67,7 @@ void WINAPI DumpStack(_In_ ULONG FramesToSkip, _In_ PCSTR txt, ULONG (__cdecl * 
 	
 	if (n > FramesToSkip)
 	{
-		if (txt) print(">>> ************* %s\n", txt);
+		if (txt) print(">>> ************* %s\r\n", txt);
 
 		n -= FramesToSkip, ppv = pv;
 
@@ -80,7 +80,7 @@ void WINAPI DumpStack(_In_ ULONG FramesToSkip, _In_ PCSTR txt, ULONG (__cdecl * 
 			if (PCSTR psz = CModule::GetNameFromVa(p, &d, &name))
 			{
 				char undName[0x400];
-				print(">> %p %S!%s + %x\n", p, name, unDNameEx(undName, psz, _countof(undName), UNDNAME_DEFAULT), d);
+				print(">> %p %S!%s + %x\r\n", p, name, unDNameEx(undName, psz, _countof(undName), UNDNAME_DEFAULT), d);
 			}
 			else
 			{
@@ -88,7 +88,7 @@ void WINAPI DumpStack(_In_ ULONG FramesToSkip, _In_ PCSTR txt, ULONG (__cdecl * 
 			}
 		} while (--n);
 
-		if (txt) print("<<<< ************* %s\n", txt);
+		if (txt) print("<<<< ************* %s\r\n", txt);
 	}
 }
 
