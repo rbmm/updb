@@ -15,23 +15,20 @@ class CModule : LIST_ENTRY
 	{
 		_size = size, _ImageBase = ImageBase;
 		RtlDuplicateUnicodeString(RTL_DUPLICATE_UNICODE_STRING_NULL_TERMINATE, Name, &_Name);
-		DbgPrint("++CModule<%p>(%wZ) %p\n", this, Name, ImageBase);
+		//DbgPrint("++CModule<%p>(%wZ) %p\n", this, Name, ImageBase);
 	}
 
 	static LIST_ENTRY s_head;
-
-	CModule()
-	{
-		InsertHeadList(&s_head, this);
-	}
+	inline static SRWLOCK _SRWLock;
 
 	~CModule()
 	{
-		DbgPrint("--CModule<%p>(%wZ) %p\n", this, &_Name, _ImageBase);
+		//DbgPrint("--CModule<%p>(%wZ) %p\n", this, &_Name, _ImageBase);
 		_b ? delete [] _Name.Buffer : RtlFreeUnicodeString(&_Name);
 	}
 
 	PCSTR GetNameFromRva(ULONG rva, PULONG pdisp, PCWSTR* ppname);
+	static NTSTATUS Create(PCUNICODE_STRING Name, PVOID ImageBase, ULONG size, CModule** ppmod);
 public:
 
 	void* operator new(size_t s, ULONG nSymbols, ULONG cbNames)
@@ -49,12 +46,9 @@ public:
 		LocalFree(pv);
 	}
 
-	static NTSTATUS Create(PCUNICODE_STRING Name, PVOID ImageBase, ULONG size, CModule** ppmod);
 	static PCSTR GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname);
 
 	static void Cleanup();
 };
 
-void LoadNtModule(ULONG n, const ULONG ph[]);
-void DumpStack(PCSTR txt);
-ULONG HashString(PCSTR lpsz, ULONG hash = 0);
+void WINAPI DumpStack(_In_ ULONG FramesToSkip, _In_ PCSTR txt = 0, ULONG (__cdecl * print) ( PCSTR Format, ...) = DbgPrint);

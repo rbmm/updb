@@ -14,16 +14,27 @@ NTSTATUS OpenPdb(PHANDLE phFile, PCWSTR FilePath)
 NTSTATUS OpenPdb(PHANDLE phFile, PCSTR PdbFileName, PCWSTR NtSymbolPath, PGUID Signature, ULONG Age)
 {
 	PWSTR FilePath = 0;
-	PCSTR FileName;
 	ULONG BytesInMultiByteString, cb = 0, rcb, BytesInUnicodeString, SymInUnicodeString;
 	NTSTATUS status;
 
-	if (FileName = strrchr(PdbFileName, '\\'))
+	if (strchr(PdbFileName, '\\'))
 	{
-		PdbFileName = FileName + 1;
-	}
+		PWSTR buf = 0;
+		while (cb = MultiByteToWideChar(CP_UTF8, 0, PdbFileName, MAXULONG, buf, cb))
+		{
+			if (FilePath)
+			{
+				return OpenPdb(phFile, FilePath);
+			}
 
-	// try by name only
+			STATIC_WSTRING(GLOBAL, "\\GLOBAL??\\");
+			FilePath = (PWSTR)alloca(cb * sizeof(WCHAR) + sizeof(GLOBAL) - sizeof(WCHAR));
+			memcpy(FilePath, GLOBAL, sizeof(GLOBAL) - sizeof(WCHAR));
+			buf = FilePath + _countof(GLOBAL) - 1;
+		}
+
+		return STATUS_UNSUCCESSFUL;
+	}
 
 	BytesInMultiByteString = (ULONG)strlen(PdbFileName) + 1;
 

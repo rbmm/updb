@@ -12,6 +12,8 @@ PCSTR CModule::GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname)
 	CModule* p = 0;
 	PLIST_ENTRY entry = &s_head;
 	
+	AcquireSRWLockShared(&_SRWLock);
+
 	while ((entry = entry->Flink) != &s_head)
 	{
 		p = static_cast<CModule*>(entry);
@@ -20,15 +22,22 @@ PCSTR CModule::GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname)
 		
 		if (rva < p->_size)
 		{
+			ReleaseSRWLockShared(&_SRWLock);
+
 			return p->GetNameFromRva((ULONG)rva, pdisp, ppname);
 		}
 	}
+
+	ReleaseSRWLockShared(&_SRWLock);
 
 	_LDR_DATA_TABLE_ENTRY* ldte;
 	if (0 <= LdrFindEntryForAddress(pv, &ldte))
 	{
 		if (0 <= CModule::Create(&ldte->BaseDllName, ldte->DllBase, ldte->SizeOfImage, &p))
 		{
+			AcquireSRWLockExclusive(&_SRWLock);
+			InsertHeadList(&s_head, p);
+			ReleaseSRWLockExclusive(&_SRWLock);
 			return p->GetNameFromRva((ULONG)((ULONG_PTR)pv - (ULONG_PTR)ldte->DllBase), pdisp, ppname);
 		}
 	}
