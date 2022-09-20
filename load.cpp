@@ -10,7 +10,7 @@ typedef RTL_FRAME<DATA_BLOB> AFRAME;
 
 static void* __cdecl fAlloc(ULONG cb)
 {
-	if (AFRAME* prf = AFRAME::get())
+	if (DATA_BLOB* prf = AFRAME::get())
 	{
 		if (cb > prf->cbData)
 		{
@@ -61,7 +61,7 @@ PCSTR unDNameEx(PSTR undName, PCSTR rawName, DWORD cb, DWORD flags)
 
 void WINAPI DumpStack(_In_ ULONG FramesToSkip, _In_ PCSTR txt, ULONG (__cdecl * print) ( PCSTR Format, ...))
 {
-	PVOID pv[32], *ppv;
+	PVOID pv[64], *ppv;
 	
 	ULONG n = RtlWalkFrameChain(pv, _countof(pv), FramesToSkip << RTL_STACK_WALKING_MODE_FRAMES_TO_SKIP_SHIFT);
 	

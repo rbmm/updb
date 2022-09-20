@@ -7,6 +7,42 @@ _NT_BEGIN
 
 LIST_ENTRY CModule::s_head = { &s_head, &s_head };
 
+PVOID CModule::GetVaFromName(HMODULE hmod, PCSTR Name)
+{
+	CModule* p = 0;
+	PLIST_ENTRY entry = &s_head;
+
+	AcquireSRWLockShared(&_SRWLock);
+
+	while ((entry = entry->Flink) != &s_head)
+	{
+		p = static_cast<CModule*>(entry);
+
+		if (hmod == p->_ImageBase)
+		{
+			ReleaseSRWLockShared(&_SRWLock);
+
+			return p->GetVaFromName(Name);
+		}
+	}
+
+	ReleaseSRWLockShared(&_SRWLock);
+
+	_LDR_DATA_TABLE_ENTRY* ldte;
+	if (0 <= LdrFindEntryForAddress(hmod, &ldte))
+	{
+		if (0 <= CModule::Create(&ldte->BaseDllName, ldte->DllBase, ldte->SizeOfImage, &p))
+		{
+			AcquireSRWLockExclusive(&_SRWLock);
+			InsertHeadList(&s_head, p);
+			ReleaseSRWLockExclusive(&_SRWLock);
+			return p->GetVaFromName(Name);
+		}
+	}
+
+	return 0;
+}
+
 PCSTR CModule::GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname)
 {
 	CModule* p = 0;
@@ -45,10 +81,27 @@ PCSTR CModule::GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname)
 	return 0;
 }
 
+PVOID CModule::GetVaFromName(PCSTR Name)
+{
+	if (ULONG n = _nSymbols)
+	{
+		PULARGE_INTEGER offsets = _offsets;
+
+		do 
+		{
+			if (!strcmp(Name, RtlOffsetToPointer(this, offsets->HighPart)))
+			{
+				return (PBYTE)_ImageBase + offsets->LowPart;
+			}
+		} while (offsets++, --n);
+	}
+
+	return 0;
+}
+
 PCSTR CModule::GetNameFromRva(ULONG rva, PULONG pdisp, PCWSTR* ppname)
 {
 	*ppname = _Name.Buffer;
-	PULARGE_INTEGER offsets = _offsets;
 	ULONG a = 0, b = _nSymbols, o, ofs;
 
 	if (!b)
@@ -56,6 +109,8 @@ PCSTR CModule::GetNameFromRva(ULONG rva, PULONG pdisp, PCWSTR* ppname)
 		*pdisp = rva;
 		return "MZ";
 	}
+
+	PULARGE_INTEGER offsets = _offsets;
 
 	do 
 	{

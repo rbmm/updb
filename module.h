@@ -27,6 +27,7 @@ class CModule : LIST_ENTRY
 		_b ? delete [] _Name.Buffer : RtlFreeUnicodeString(&_Name);
 	}
 
+	PVOID GetVaFromName(PCSTR Name);
 	PCSTR GetNameFromRva(ULONG rva, PULONG pdisp, PCWSTR* ppname);
 	static NTSTATUS Create(PCUNICODE_STRING Name, PVOID ImageBase, ULONG size, CModule** ppmod);
 public:
@@ -46,6 +47,7 @@ public:
 		LocalFree(pv);
 	}
 
+	static PVOID GetVaFromName(HMODULE hmod, PCSTR Name);
 	static PCSTR GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname);
 
 	static void Cleanup();
