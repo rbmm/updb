@@ -1,13 +1,15 @@
 #pragma once
 
+#include "pdb_util.h"
+
 class CModule : LIST_ENTRY
 {
 	UNICODE_STRING _Name {};
 	PVOID _ImageBase;
 	ULONG _size;
-	ULONG _nSymbols;
 	BOOL _b = FALSE;
-	ULARGE_INTEGER _offsets[/*_nSymbols { rva, ofs }*/];
+	ULONG _nSymbols;
+	RVAOFS _Symbols[];
 	//CHAR Names[];
 	void Init(PCWSTR fmt, ...);
 
@@ -32,9 +34,9 @@ class CModule : LIST_ENTRY
 	static NTSTATUS Create(PCUNICODE_STRING Name, PVOID ImageBase, ULONG size, CModule** ppmod);
 public:
 
-	void* operator new(size_t s, ULONG nSymbols, ULONG cbNames)
+	void* operator new(size_t s, ULONG nSymbols, size_t cbNames)
 	{
-		if (PVOID pv = LocalAlloc(0, s + nSymbols * sizeof(ULARGE_INTEGER) + cbNames))
+		if (PVOID pv = LocalAlloc(0, s + nSymbols * sizeof(RVAOFS) + cbNames))
 		{
 			reinterpret_cast<CModule*>(pv)->_nSymbols = nSymbols;
 			return pv;

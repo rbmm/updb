@@ -32,7 +32,7 @@ static void __cdecl fFree(void* )
 
 PCSTR __cdecl GetParameter(long /*i*/)
 {
-	return "";
+	return const_cast<PSTR>("");
 }
 
 PSTR _unDName(PSTR undName, PCSTR rawName, DWORD cb, DWORD flags)

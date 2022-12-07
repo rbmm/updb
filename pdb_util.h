@@ -13,23 +13,28 @@ struct CV_INFO_PDB
 
 #endif
 
+struct RVAOFS
+{
+	ULONG rva, ofs;
+};
+
 struct __declspec(novtable) SymStore 
 {
 	NTSTATUS GetSymbols(HMODULE hmod, PCWSTR NtSymbolPath);
 	
 	NTSTATUS GetSymbols(PCWSTR PdbPath);
 
-	virtual void Symbol(ULONG rva, PCSTR name) = 0;
-	
-	virtual BOOL EnumSymbolsEnd() = 0;
+	virtual void Symbols(_In_ RVAOFS* pSymbols, _In_ ULONG nSymbols, _In_ PSTR names) = 0;
 	
 	virtual NTSTATUS OnOpenPdb(NTSTATUS status, CV_INFO_PDB* /*lpcvh*/)
 	{
 		return status;
 	}
 
-private:
-	NTSTATUS GetSymbols(HANDLE hFile, PGUID signature, DWORD age);
+	virtual BOOL IncludeSymbol(_In_ PCSTR name);
 
+private:
+
+	NTSTATUS GetSymbols(HANDLE hFile, PGUID signature, DWORD age);
 };
 
