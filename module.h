@@ -23,16 +23,17 @@ class CModule : LIST_ENTRY
 	static LIST_ENTRY s_head;
 	inline static SRWLOCK _SRWLock;
 
-	~CModule()
-	{
-		//DbgPrint("--CModule<%p>(%wZ) %p\n", this, &_Name, _ImageBase);
-		_b ? delete [] _Name.Buffer : RtlFreeUnicodeString(&_Name);
-	}
-
-	PVOID GetVaFromName(PCSTR Name);
-	PCSTR GetNameFromRva(ULONG rva, PULONG pdisp, PCWSTR* ppname);
+	~CModule();
 	static NTSTATUS Create(PCUNICODE_STRING Name, PVOID ImageBase, ULONG size, CModule** ppmod);
+
 public:
+	PVOID GetVaFromName(_In_ PCSTR Name);
+	PCSTR GetNameFromVa(_In_ PVOID pv, _Out_ PULONG pdisp);
+	PCSTR GetNameFromRva(_In_ ULONG rva, _Out_ PULONG pdisp);
+
+	static NTSTATUS Create(PCWSTR psz, PVOID ImageBase, ULONG size, CModule** ppmod);
+
+	static NTSTATUS Create(_In_ HMODULE hmod, _Out_ CModule** ppmod);
 
 	void* operator new(size_t s, ULONG nSymbols, size_t cbNames)
 	{
@@ -49,8 +50,8 @@ public:
 		LocalFree(pv);
 	}
 
-	static PVOID GetVaFromName(HMODULE hmod, PCSTR Name);
-	static PCSTR GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname);
+	static PVOID s_GetVaFromName(_In_ HMODULE hmod, _In_ PCSTR Name);
+	static PCSTR s_GetNameFromVa(_In_ PVOID pv, _Out_ PULONG pdisp, _Out_ PCWSTR* ppname);
 
 	static void Cleanup();
 };

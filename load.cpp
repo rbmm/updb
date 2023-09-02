@@ -35,28 +35,28 @@ PCSTR __cdecl GetParameter(long /*i*/)
 	return const_cast<PSTR>("");
 }
 
-PSTR _unDName(PSTR undName, PCSTR rawName, DWORD cb, DWORD flags)
+PSTR _unDName(PSTR buffer, PCSTR mangled, DWORD cb, DWORD flags)
 {
 	PSTR psz = 0;
 	if (PUCHAR pbData = new UCHAR[32*PAGE_SIZE])
 	{
 		AFRAME af;
 		af.pbData = pbData, af.cbData = 32*PAGE_SIZE;
-		psz = __unDNameEx(undName, rawName, cb, fAlloc, fFree, GetParameter, flags);
+		psz = __unDNameEx(buffer, mangled, cb, fAlloc, fFree, GetParameter, flags);
 		delete [] pbData;
 	}
 
 	return psz;
 }
 
-PCSTR unDNameEx(PSTR undName, PCSTR rawName, DWORD cb, DWORD flags)
+PCSTR unDNameEx(_Out_ PSTR buffer, _In_ PCSTR mangled, _In_ DWORD cb, _In_ DWORD flags)
 {
-	if (*rawName != '?')
+	if (*mangled != '?')
 	{
-		return rawName;
+		return mangled;
 	}
-	PSTR sz = _unDName(undName, rawName, cb, flags);
-	return sz ? sz : rawName;
+	PSTR sz = _unDName(buffer, mangled, cb, flags);
+	return sz ? sz : mangled;
 }
 
 void WINAPI DumpStack(_In_ ULONG FramesToSkip, _In_ PCSTR txt, ULONG (__cdecl * print) ( PCSTR Format, ...))
@@ -77,7 +77,7 @@ void WINAPI DumpStack(_In_ ULONG FramesToSkip, _In_ PCSTR txt, ULONG (__cdecl * 
 			ULONG d;
 			PCWSTR name;
 
-			if (PCSTR psz = CModule::GetNameFromVa(p, &d, &name))
+			if (PCSTR psz = CModule::s_GetNameFromVa(p, &d, &name))
 			{
 				char undName[0x400];
 				print(">> %p %S!%s + %x\r\n", p, name, unDNameEx(undName, psz, _countof(undName), UNDNAME_DEFAULT), d);

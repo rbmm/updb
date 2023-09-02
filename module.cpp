@@ -7,7 +7,44 @@ _NT_BEGIN
 
 LIST_ENTRY CModule::s_head = { &s_head, &s_head };
 
-PVOID CModule::GetVaFromName(HMODULE hmod, PCSTR Name)
+CModule::~CModule()
+{
+	AcquireSRWLockExclusive(&_SRWLock);
+	RemoveEntryList(this);
+	ReleaseSRWLockExclusive(&_SRWLock);
+
+	//DbgPrint("--CModule<%p>(%wZ) %p\n", this, &_Name, _ImageBase);
+	_b ? delete [] _Name.Buffer : RtlFreeUnicodeString(&_Name);
+}
+
+NTSTATUS CModule::Create(PCWSTR psz, PVOID ImageBase, ULONG size, CModule** ppmod)
+{
+	UNICODE_STRING Name;
+	RtlInitUnicodeString(&Name, psz);
+	return Create(&Name, ImageBase, size, ppmod);
+}
+
+NTSTATUS CModule::Create(HMODULE hmod, CModule** ppmod)
+{
+	_LDR_DATA_TABLE_ENTRY* ldte;
+	NTSTATUS status = LdrFindEntryForAddress(hmod, &ldte);
+
+	if (0 <= status)
+	{
+		CModule* p;
+		if (0 <= (status = CModule::Create(&ldte->BaseDllName, ldte->DllBase, ldte->SizeOfImage, &p)))
+		{
+			AcquireSRWLockExclusive(&_SRWLock);
+			InsertHeadList(&s_head, p);
+			ReleaseSRWLockExclusive(&_SRWLock);
+			*ppmod = p;
+		}
+	}
+
+	return status;
+}
+
+PVOID CModule::s_GetVaFromName(HMODULE hmod, PCSTR Name)
 {
 	CModule* p = 0;
 	PLIST_ENTRY entry = &s_head;
@@ -28,22 +65,15 @@ PVOID CModule::GetVaFromName(HMODULE hmod, PCSTR Name)
 
 	ReleaseSRWLockShared(&_SRWLock);
 
-	_LDR_DATA_TABLE_ENTRY* ldte;
-	if (0 <= LdrFindEntryForAddress(hmod, &ldte))
+	if (0 <= CModule::Create(hmod, &p))
 	{
-		if (0 <= CModule::Create(&ldte->BaseDllName, ldte->DllBase, ldte->SizeOfImage, &p))
-		{
-			AcquireSRWLockExclusive(&_SRWLock);
-			InsertHeadList(&s_head, p);
-			ReleaseSRWLockExclusive(&_SRWLock);
-			return p->GetVaFromName(Name);
-		}
+		return p->GetVaFromName(Name);
 	}
 
 	return 0;
 }
 
-PCSTR CModule::GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname)
+PCSTR CModule::s_GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname)
 {
 	CModule* p = 0;
 	PLIST_ENTRY entry = &s_head;
@@ -59,8 +89,9 @@ PCSTR CModule::GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname)
 		if (rva < p->_size)
 		{
 			ReleaseSRWLockShared(&_SRWLock);
+			*ppname = p->_Name.Buffer;
 
-			return p->GetNameFromRva((ULONG)rva, pdisp, ppname);
+			return p->GetNameFromRva((ULONG)rva, pdisp);
 		}
 	}
 
@@ -74,7 +105,8 @@ PCSTR CModule::GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname)
 			AcquireSRWLockExclusive(&_SRWLock);
 			InsertHeadList(&s_head, p);
 			ReleaseSRWLockExclusive(&_SRWLock);
-			return p->GetNameFromRva((ULONG)((ULONG_PTR)pv - (ULONG_PTR)ldte->DllBase), pdisp, ppname);
+			*ppname = p->_Name.Buffer;
+			return p->GetNameFromRva((ULONG)((ULONG_PTR)pv - (ULONG_PTR)ldte->DllBase), pdisp);
 		}
 	}
 
@@ -99,9 +131,14 @@ PVOID CModule::GetVaFromName(PCSTR Name)
 	return 0;
 }
 
-PCSTR CModule::GetNameFromRva(ULONG rva, PULONG pdisp, PCWSTR* ppname)
+PCSTR CModule::GetNameFromVa(_In_ PVOID pv, _Out_ PULONG pdisp)
 {
-	*ppname = _Name.Buffer;
+	ULONG_PTR rva = (ULONG_PTR)pv - (ULONG_PTR)_ImageBase;
+	return rva < _size ? GetNameFromRva((ULONG)rva, pdisp) : 0;
+}
+
+PCSTR CModule::GetNameFromRva(ULONG rva, PULONG pdisp)
+{
 	ULONG a = 0, b = _nSymbols, o, s_rva;
 
 	if (!b)

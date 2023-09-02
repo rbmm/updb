@@ -45,11 +45,11 @@
 EXTERN_C 
 DECLSPEC_IMPORT
 PSTR __cdecl __unDNameEx(
-             PSTR buffer, 
-             PCSTR mangled, 
-             DWORD cb,
-             void* (__cdecl* memget)(DWORD),
-             void (__cdecl* memfree)(void*),
-             PCSTR (__cdecl* GetParameter)(long i),
-             DWORD flags
+             _Out_ PSTR buffer, 
+             _In_ PCSTR mangled, 
+             _In_ DWORD cb,
+             _In_ void* (__cdecl* memget)(DWORD),
+             _In_ void (__cdecl* memfree)(void*),
+             _In_ PCSTR (__cdecl* GetParameter)(long i),
+             _In_ DWORD flags
              );

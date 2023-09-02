@@ -38,3 +38,4 @@ private:
 	NTSTATUS GetSymbols(HANDLE hFile, PGUID signature, DWORD age);
 };
 
+PCSTR WINAPI unDNameEx(_Out_ PSTR buffer, _In_ PCSTR mangled, _In_ DWORD cb, _In_ DWORD flags);
