@@ -23,15 +23,15 @@ class CModule : LIST_ENTRY
 	static LIST_ENTRY s_head;
 	inline static SRWLOCK _SRWLock;
 
-	~CModule();
-	static NTSTATUS Create(PCUNICODE_STRING Name, PVOID ImageBase, ULONG size, CModule** ppmod);
+	static NTSTATUS Create(_In_ PCUNICODE_STRING Name, _In_ HMODULE hmod, _In_ ULONG size, _Out_ CModule** ppmod);
 
 public:
+	~CModule();
 	PVOID GetVaFromName(_In_ PCSTR Name);
 	PCSTR GetNameFromVa(_In_ PVOID pv, _Out_ PULONG pdisp);
 	PCSTR GetNameFromRva(_In_ ULONG rva, _Out_ PULONG pdisp);
 
-	static NTSTATUS Create(PCWSTR psz, PVOID ImageBase, ULONG size, CModule** ppmod);
+	static NTSTATUS Create(_In_ PCWSTR psz, _In_ HMODULE hmod, _In_ ULONG size, _Out_ CModule** ppmod);
 
 	static NTSTATUS Create(_In_ HMODULE hmod, _Out_ CModule** ppmod);
 

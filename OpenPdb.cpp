@@ -113,13 +113,15 @@ NTSTATUS SymStore::GetSymbols(HANDLE hFile, PGUID signature, DWORD age)
 	return status;
 }
 
+#define LDR_IS_DATAFILE(DllHandle) (((ULONG_PTR)(DllHandle)) & (ULONG_PTR)1)
+
 NTSTATUS SymStore::GetSymbols(HMODULE hmod, PCWSTR NtSymbolPath)
 {
 	DWORD cb;
-	BOOLEAN bMappedAsImage = !((DWORD_PTR)hmod & (PAGE_SIZE - 1));
+	BOOLEAN bMappedAsImage = !LDR_IS_DATAFILE(hmod);
 	PIMAGE_DEBUG_DIRECTORY pidd = (PIMAGE_DEBUG_DIRECTORY)RtlImageDirectoryEntryToData(hmod, bMappedAsImage, IMAGE_DIRECTORY_ENTRY_DEBUG, &cb);
 
-	if (!pidd || !cb || (cb % sizeof IMAGE_DEBUG_DIRECTORY)) return STATUS_NOT_FOUND;
+	if (!pidd || !cb || (cb % sizeof(IMAGE_DEBUG_DIRECTORY))) return STATUS_NOT_FOUND;
 
 	do 
 	{

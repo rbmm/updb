@@ -17,31 +17,19 @@ CModule::~CModule()
 	_b ? delete [] _Name.Buffer : RtlFreeUnicodeString(&_Name);
 }
 
-NTSTATUS CModule::Create(PCWSTR psz, PVOID ImageBase, ULONG size, CModule** ppmod)
+NTSTATUS CModule::Create(_In_ PCWSTR psz, _In_ HMODULE hmod, _In_ ULONG size, _Out_ CModule** ppmod)
 {
 	UNICODE_STRING Name;
 	RtlInitUnicodeString(&Name, psz);
-	return Create(&Name, ImageBase, size, ppmod);
+	return Create(&Name, hmod, size, ppmod);
 }
 
-NTSTATUS CModule::Create(HMODULE hmod, CModule** ppmod)
+NTSTATUS CModule::Create(_In_ HMODULE hmod, _Out_ CModule** ppmod)
 {
 	_LDR_DATA_TABLE_ENTRY* ldte;
 	NTSTATUS status = LdrFindEntryForAddress(hmod, &ldte);
 
-	if (0 <= status)
-	{
-		CModule* p;
-		if (0 <= (status = CModule::Create(&ldte->BaseDllName, ldte->DllBase, ldte->SizeOfImage, &p)))
-		{
-			AcquireSRWLockExclusive(&_SRWLock);
-			InsertHeadList(&s_head, p);
-			ReleaseSRWLockExclusive(&_SRWLock);
-			*ppmod = p;
-		}
-	}
-
-	return status;
+	return 0 > status ? status : Create(&ldte->BaseDllName, (HMODULE)ldte->DllBase, ldte->SizeOfImage, ppmod);
 }
 
 PVOID CModule::s_GetVaFromName(HMODULE hmod, PCSTR Name)
@@ -100,11 +88,8 @@ PCSTR CModule::s_GetNameFromVa(PVOID pv, PULONG pdisp, PCWSTR* ppname)
 	_LDR_DATA_TABLE_ENTRY* ldte;
 	if (0 <= LdrFindEntryForAddress(pv, &ldte))
 	{
-		if (0 <= CModule::Create(&ldte->BaseDllName, ldte->DllBase, ldte->SizeOfImage, &p))
+		if (0 <= CModule::Create(&ldte->BaseDllName, (HMODULE)ldte->DllBase, ldte->SizeOfImage, &p))
 		{
-			AcquireSRWLockExclusive(&_SRWLock);
-			InsertHeadList(&s_head, p);
-			ReleaseSRWLockExclusive(&_SRWLock);
 			*ppname = p->_Name.Buffer;
 			return p->GetNameFromRva((ULONG)((ULONG_PTR)pv - (ULONG_PTR)ldte->DllBase), pdisp);
 		}
@@ -176,8 +161,10 @@ __0:
 	goto __0;
 }
 
-NTSTATUS CModule::Create(PCUNICODE_STRING Name, PVOID ImageBase, ULONG size, CModule** ppmod)
+NTSTATUS CModule::Create(_In_ PCUNICODE_STRING Name, _In_ HMODULE hmod, _In_ ULONG size, _Out_ CModule** ppmod)
 {
+	PVOID ImageBase = PAGE_ALIGN(hmod);
+
 	struct Z : SymStore 
 	{
 		CModule* _pModule = 0;
@@ -245,7 +232,7 @@ NTSTATUS CModule::Create(PCUNICODE_STRING Name, PVOID ImageBase, ULONG size, CMo
 
 	} ss;
 
-	NTSTATUS status = ss.GetSymbols((HMODULE)ImageBase, L"\\systemroot\\symbols");
+	NTSTATUS status = ss.GetSymbols(hmod, L"\\systemroot\\symbols");
 
 	CModule* pModule;
 
@@ -284,6 +271,12 @@ __0:
 			pModule->Init(Name, ImageBase, size);
 __1:
 			*ppmod = pModule;
+
+			AcquireSRWLockExclusive(&_SRWLock);
+			InsertHeadList(&s_head, pModule);
+			ReleaseSRWLockExclusive(&_SRWLock);
+			*ppmod = pModule;
+
 			return STATUS_SUCCESS;
 		}
 
