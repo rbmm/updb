@@ -119,18 +119,18 @@ NTSTATUS SymStore::GetSymbols(HMODULE hmod, PCWSTR NtSymbolPath)
 {
 	DWORD cb;
 	BOOLEAN bMappedAsImage = !LDR_IS_DATAFILE(hmod);
-	PIMAGE_DEBUG_DIRECTORY pidd = (PIMAGE_DEBUG_DIRECTORY)RtlImageDirectoryEntryToData(hmod, bMappedAsImage, IMAGE_DIRECTORY_ENTRY_DEBUG, &cb);
+	PVOID Base = PAGE_ALIGN(hmod);
+	PIMAGE_DEBUG_DIRECTORY pidd = (PIMAGE_DEBUG_DIRECTORY)RtlImageDirectoryEntryToData(Base, bMappedAsImage, IMAGE_DIRECTORY_ENTRY_DEBUG, &cb);
 
 	if (!pidd || !cb || (cb % sizeof(IMAGE_DEBUG_DIRECTORY))) return STATUS_NOT_FOUND;
 
 	do 
 	{
-
 		if (pidd->Type == IMAGE_DEBUG_TYPE_CODEVIEW && pidd->SizeOfData > sizeof(CV_INFO_PDB))
 		{
 			if (DWORD PointerToRawData = bMappedAsImage ? pidd->AddressOfRawData : pidd->PointerToRawData)
 			{
-				CV_INFO_PDB* lpcvh = (CV_INFO_PDB*)RtlOffsetToPointer(PAGE_ALIGN(hmod), PointerToRawData);
+				CV_INFO_PDB* lpcvh = (CV_INFO_PDB*)RtlOffsetToPointer(Base, PointerToRawData);
 
 				if (lpcvh->CvSignature == 'SDSR')
 				{

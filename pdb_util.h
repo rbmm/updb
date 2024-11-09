@@ -11,6 +11,8 @@ struct CV_INFO_PDB
 	char PdbFileName[];
 };
 
+struct PdbFileHeader;
+
 #endif
 
 struct RVAOFS
@@ -39,3 +41,5 @@ private:
 };
 
 PCSTR WINAPI unDNameEx(_Out_ PSTR buffer, _In_ PCSTR mangled, _In_ DWORD cb, _In_ DWORD flags);
+
+NTSTATUS ParsePDB(PdbFileHeader* header, SIZE_T ViewSize, PGUID signature, DWORD age, SymStore* pss);
