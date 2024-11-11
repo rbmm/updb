@@ -11,7 +11,7 @@ NTSTATUS OpenPdb(PHANDLE phFile, PCWSTR FilePath)
 	return NtOpenFile(phFile, FILE_GENERIC_READ, &oa, &iosb, FILE_SHARE_VALID_FLAGS, FILE_SYNCHRONOUS_IO_NONALERT);
 }
 
-NTSTATUS OpenPdb(PHANDLE phFile, PCSTR PdbFileName, PCWSTR NtSymbolPath, PGUID Signature, ULONG Age)
+NTSTATUS OpenPdb(PHANDLE phFile, PCSTR PdbFileName, PCWSTR NtSymbolPath, const GUID* Signature, ULONG Age)
 {
 	PWSTR FilePath = 0;
 	ULONG BytesInMultiByteString, cb = 0, rcb, BytesInUnicodeString, SymInUnicodeString;
@@ -87,7 +87,7 @@ NTSTATUS SymStore::GetSymbols(PCWSTR PdbPath)
 	return 0 > status ? status : GetSymbols(hFile, 0, 0);
 }
 
-NTSTATUS SymStore::GetSymbols(HANDLE hFile, PGUID signature, DWORD age)
+NTSTATUS SymStore::GetSymbols(HANDLE hFile, const GUID* signature, DWORD age)
 {
 	HANDLE hSection;
 
