@@ -380,7 +380,6 @@ public:
 	}
 };
 
-#include "../winz/str.h"
 #include "pdb_util.h"
 
 size_t __fastcall strnlen(_In_ size_t numberOfElements, _In_ const char *str);

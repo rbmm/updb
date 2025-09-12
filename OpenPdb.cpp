@@ -13,64 +13,48 @@ NTSTATUS OpenPdb(PHANDLE phFile, PCWSTR FilePath)
 
 NTSTATUS OpenPdb(PHANDLE phFile, PCSTR PdbFileName, PCWSTR NtSymbolPath, const GUID* Signature, ULONG Age)
 {
-	PWSTR FilePath = 0;
-	ULONG BytesInMultiByteString, cb = 0, rcb, BytesInUnicodeString, SymInUnicodeString;
 	NTSTATUS status;
+
+	PWSTR FilePath = 0, psz = 0;
+	ULONG cb = 0, len = (ULONG)strlen(PdbFileName) + 1;
 
 	if (strchr(PdbFileName, '\\'))
 	{
-		PWSTR buf = 0;
-		while (cb = MultiByteToWideChar(CP_UTF8, 0, PdbFileName, MAXULONG, buf, cb))
+		while (0 <= (status = RtlUTF8ToUnicodeN(psz, cb, &cb, PdbFileName, len)))
 		{
-			if (FilePath)
+			if (psz)
 			{
 				return OpenPdb(phFile, FilePath);
 			}
 
-			STATIC_WSTRING(GLOBAL, "\\GLOBAL??\\");
-			FilePath = (PWSTR)alloca(cb * sizeof(WCHAR) + sizeof(GLOBAL) - sizeof(WCHAR));
-			memcpy(FilePath, GLOBAL, sizeof(GLOBAL) - sizeof(WCHAR));
-			buf = FilePath + _countof(GLOBAL) - 1;
+			static const WCHAR global[] = L"\\GLOBAL??\\";
+
+			FilePath = (PWSTR)memcpy(alloca(cb + sizeof(global)), global, sizeof(global));
+			psz = FilePath + _countof(global) - 1;
 		}
 
-		return STATUS_UNSUCCESSFUL;
-	}
-
-	BytesInMultiByteString = (ULONG)strlen(PdbFileName) + 1;
-
-	if (0 > (status = RtlMultiByteToUnicodeSize(&BytesInUnicodeString, PdbFileName, BytesInMultiByteString)))
-	{
 		return status;
 	}
 
-	SymInUnicodeString = BytesInUnicodeString >> 1;
+	int s = 0;
 
-	ULONG n = (ULONG)wcslen(NtSymbolPath) + 34 + SymInUnicodeString, m = Age;
-	do 
-	{
-		n++;
-	} while (m >>= 4);
-
-	if ((rcb = (n + SymInUnicodeString) << 1) > cb)
-	{
-		FilePath = (PWSTR)alloca(rcb - cb);
-	}
-
-	if (0 > (status = RtlMultiByteToUnicodeN(FilePath + n, BytesInUnicodeString, &BytesInUnicodeString, PdbFileName, BytesInMultiByteString)))
-	{
-		return status;
-	}
-
-	swprintf(FilePath, L"%s\\%s\\%08X%04X%04X%02X%02X%02X%02X%02X%02X%02X%02X%x", 
-		NtSymbolPath, FilePath + n,
+	while (0 <= (status = RtlUTF8ToUnicodeN(psz, cb, &cb, PdbFileName, len)) &&
+		0 < (s = _snwprintf(FilePath, s, L"%ws\\%*ws\\%08X%04X%04X%02X%02X%02X%02X%02X%02X%02X%02X%x\\",
+		NtSymbolPath, (int)(cb / sizeof(WCHAR)) - 1, psz ? psz : L"",
 		Signature->Data1, Signature->Data2, Signature->Data3,
 		Signature->Data4[0], Signature->Data4[1], Signature->Data4[2], Signature->Data4[3],
 		Signature->Data4[4], Signature->Data4[5], Signature->Data4[6], Signature->Data4[7],
-		Age);
+		Age)))
+	{
+		if (psz)
+		{
+			return OpenPdb(phFile, FilePath);
+		}
 
-	FilePath[n - 1] = '\\';
+		psz = (FilePath = (PWSTR)alloca(cb + s * sizeof(WCHAR))) + s;
+	}
 
-	return OpenPdb(phFile, FilePath);
+	return 0 > status ? status : STATUS_INTERNAL_ERROR;	
 }
 
 struct PdbFileHeader;
