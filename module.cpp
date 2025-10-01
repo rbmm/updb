@@ -237,7 +237,7 @@ NTSTATUS CModule::Create(_In_ PCUNICODE_STRING Name, _In_ HMODULE hmod, _In_ ULO
 
 		virtual BOOL IncludeSymbol(_In_ PCSTR name)
 		{
-			return (name[0] != '?' || name[1] != '?') && __super::IncludeSymbol(name) && !SpecialSymbol(name);
+			return /*(name[0] != '?' || name[1] != '?') && */__super::IncludeSymbol(name) && !SpecialSymbol(name);
 		}
 
 	} ss;

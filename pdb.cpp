@@ -380,6 +380,7 @@ public:
 	}
 };
 
+#include "../winz/str.h"
 #include "pdb_util.h"
 
 size_t __fastcall strnlen(_In_ size_t numberOfElements, _In_ const char *str);
@@ -677,6 +678,8 @@ ULONG LoadSymbols(PdbReader* pdb,
 	return n;
 }
 
+PSTR UndecorateString(PCSTR pszFunc);
+
 BOOL SymStore::IncludeSymbol(_In_ PCSTR name)
 {
 	switch (*name)
@@ -697,7 +700,7 @@ BOOL SymStore::IncludeSymbol(_In_ PCSTR name)
 		// ??_C@_ `string` - not include
 		if (name[1] == '?' && name[2] == '_' && name[3] == 'C' && name[4] == '@' && name[5] == '_')
 		{
-			return FALSE;
+			return 0 != UndecorateString(name + 6);
 		}
 		break;
 	}
@@ -742,7 +745,7 @@ ULONG GetMaxSymCount(PVOID stream, ULONG size, SymStore* pss)
 			}
 			continue;
 
-		case S_PUB32:
+		case S_PUB32:			
 			if (IsValidSymbol(pbs, size))
 			{
 				name = pbs->name;
